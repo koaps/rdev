@@ -1,0 +1,27 @@
+---
+name: default
+kind: pipeline
+type: docker
+
+trigger:
+  branches:
+    - main
+  event:
+    - push
+
+steps:
+- name: build
+  image: docker:dind
+  volumes:
+  - name: dockersock
+    path: /var/run/docker.sock
+  commands:
+  - sleep 5 # give docker enough time to start
+  - apk add docker-compose git make
+  - make
+  - make up
+
+volumes:
+- name: dockersock
+  host:
+    path: /var/run/docker.sock

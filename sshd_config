@@ -1,0 +1,21 @@
+Port 22
+
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+LoginGraceTime 120
+PermitRootLogin no
+StrictModes yes
+
+PasswordAuthentication no
+PubkeyAuthentication yes
+ChallengeResponseAuthentication no
+UsePAM yes
+
+PrintMotd no
+TCPKeepAlive yes
+ClientAliveInterval 130
+UseDNS no
+
+AcceptEnv LANG LC_*
