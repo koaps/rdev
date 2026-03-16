@@ -1,0 +1,71 @@
+FROM debian:trixie-slim
+
+RUN apt-get update \
+ && apt-get install -y apt-utils locales \
+ && dpkg-reconfigure -f noninteractive locales \
+ && locale-gen C.UTF-8 \
+ && /usr/sbin/update-locale LANG=C.UTF-8 \
+ && echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
+ && locale-gen \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+RUN mkdir -p /usr/share/man/man1
+
+RUN apt-get update \
+  && apt-get install -y \
+    apt-transport-https \
+    build-essential \
+    curl \
+    fonts-mononoki \
+    fzf \
+    git \
+    golang \
+    gpg \
+    jq \
+    kubectl \
+    make \
+    lazygit \
+    libbz2-dev \
+    libffi-dev \
+    liblzma-dev \
+    libncursesw5-dev \
+    libreadline-dev \
+    libssl-dev \
+    libsqlite3-dev \
+    libxml2-dev \
+    libxmlsec1-dev \
+    luarocks \
+    npm \
+    openssh-client openssh-server \
+    pkg-config \
+    ripgrep \
+    rsync \
+    sudo \
+    sqlite3 \
+    timidity timidity-daemon \
+    tini \
+    tmux \
+    tk-dev \
+    unzip \
+    vim \
+    wget \
+    xz-utils \
+    zip \
+    zlib1g-dev \
+  && apt-get clean \
+  && rm -vf /opt/lib*.deb \
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+WORKDIR /opt
+
+COPY sshd_config /etc/ssh/sshd_config
+
+# debug output
+RUN echo  "debian version:  $(cat /etc/debian_version) \n"
+
+CMD ["/bin/bash"]

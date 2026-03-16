@@ -1,29 +1,36 @@
-version: "3.6"
-
 services:
+  base:
+    build:
+      context: .
+      dockerfile: Dockerfile_base
+    container_name: rdev_base
+    image: rdev:base
+    networks:
+      - local
   rdev:
     build:
       context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        rdev:base: service:base
       args:
-        mongo_url: "mongodb://rdev:rdev@172.16.16.1:27017/"
+        RUSER: ${RUSER:?err}
     container_name: rdev
     hostname: rdev
-    image: 172.16.16.1:5000/rdev:latest
+    image: rdev:latest
     networks:
-    - local
+      - local
     ports:
       - "2022:22"
-      - "8008:8008"
-      - "8080:8080"
-      - "8888:8888"
+    restart: unless-stopped
     volumes:
-      - /opt/rdev:/home/rdev
-      - rdev_node_modules:/usr/lib/node_modules
+      - rdev_home:/home/${RUSER:?err}
+      - ./authorized_keys:/home/${RUSER:?err}/.ssh/authorized_keys
 
 networks:
   local:
     external: true
 
 volumes:
-  rdev_node_modules:
+  rdev_home:
     external: true

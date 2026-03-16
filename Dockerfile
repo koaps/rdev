@@ -1,70 +1,46 @@
-FROM python:3.9-slim-buster
+FROM rdev:base
 
-ARG RUSER=rdev
-ARG mongo_url
+ARG RUSER
 
-RUN apt-get update \
- && apt-get install -y locales \
- && dpkg-reconfigure -f noninteractive locales \
- && locale-gen C.UTF-8 \
- && /usr/sbin/update-locale LANG=C.UTF-8 \
- && echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
- && locale-gen \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+ARG cmake_version=4.2.3
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
 
-RUN mkdir -p /usr/share/man/man1
+WORKDIR /opt
 
-RUN apt-get update \
-    && apt-get install -y \
-        bc \
-        bison \
-        build-essential \
-        curl \
-        flex \
-        gcc \
-        git \
-        html2text \
-        imagemagick \
-        jq \
-        kmod \
-        less \
-        libxtst-dev libev-dev libxext-dev libxrender-dev libfreetype6-dev \
-        libffi-dev libfontconfig1 libgtk2.0-0 libxslt1.1 libxxf86vm1 \
-        libgmp-dev libisl-dev libmpfr-dev libmpc-dev libpq-dev libncurses5-dev \
-        libncurses-dev libssl-dev \
-        lilypond \
-        man \
-        neovim \
-        openssh-client openssh-server \
-        python3 python3-pip python3-setuptools \
-        rsync \
-        software-properties-common \
-        sudo \
-        timidity timidity-daemon \
-        tini \
-        tk \
-        tmux \
-        unzip \
-        wget \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN wget https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}.tar.gz \
+    && tar zxvf cmake-${cmake_version}.tar.gz \
+    && cd cmake-${cmake_version} \
+    && ./bootstrap \
+    && make \
+    && make install \
+    && cd ../; rm -rf cmake-${cmake_version}*
+
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 \
+    && chmod 700 get_helm.sh \
+    && ./get_helm.sh \
+    && rm -f get_helm.sh
+
+RUN curl -fsSL https://get.opentofu.org/opentofu.gpg | tee /etc/apt/keyrings/opentofu.gpg >/dev/null \
+    && curl -fsSL https://packages.opentofu.org/opentofu/tofu/gpgkey | gpg --no-tty --batch --dearmor -o /etc/apt/keyrings/opentofu-repo.gpg >/dev/null \
+    && chmod a+r /etc/apt/keyrings/opentofu.gpg \
+    && echo 'deb [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main \n \
+       deb-src [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main' | \
+       tee /etc/apt/sources.list.d/opentofu.list > /dev/null \
+    && apt update \
+    && apt-get install -y tofu
+
+
+RUN apt-get clean \
+    && rm -vf /opt/lib*.deb \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY sshd_config /etc/ssh/sshd_config
-COPY vimrc /etc/vim/vimrc.tiny
-
-# NPM
-WORKDIR /root
-COPY setup_ndodejs_16.x.sh .
-RUN /bin/bash setup_ndodejs_16.x.sh \
-    && apt-get update
 
 # gen ssh keys
-RUN ssh-keygen -A && mkdir /run/sshd
+RUN ssh-keygen -A
 
 # Replace your user id
 RUN export uid=1000 \
@@ -72,18 +48,18 @@ RUN export uid=1000 \
     && echo "$RUSER ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$RUSER \
     && chmod 0440 /etc/sudoers.d/$RUSER
 
-# custom env vars
-RUN echo "export MONGO_URL=$mongo_url" >/etc/profile.d/mongo.sh
-
-# use local pip repo
-COPY pip.conf /etc/.
+COPY authorized_keys /opt/.
 
 # copy the dependencies file
-COPY npm-packages.txt /opt/.
 COPY pip-packages.txt /opt/.
 
 COPY boot.sh /opt/boot.sh
-RUN chmod +x /opt/boot.sh
+RUN sed -i "s/replace_user/$RUSER/" /opt/boot.sh \
+    && chmod +x /opt/boot.sh
+
+# debug output
+RUN echo  "debian version:  $(cat /etc/debian_version) \n" \
+          "user:            $(whoami) \n"
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["/opt/boot.sh"]

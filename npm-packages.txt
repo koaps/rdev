@@ -1,3 +1,0 @@
-json-server
-serve
-@vue/cli
