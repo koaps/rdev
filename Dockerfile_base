@@ -26,6 +26,8 @@ RUN apt-get update \
     git \
     golang \
     gpg \
+    iproute2 \
+    iputils-ping \
     jq \
     kubectl \
     make \
